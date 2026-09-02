@@ -1,0 +1,14 @@
+# La base de datos se genera desde schema.sql + seed.sql
+data/
+*.db
+*.db.tmp
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Sistema operativo
+.DS_Store

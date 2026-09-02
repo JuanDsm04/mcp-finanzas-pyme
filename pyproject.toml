@@ -1,0 +1,22 @@
+[project]
+name = "finanzas-mcp"
+version = "0.1.0"
+description = "Servidor MCP que responde preguntas financieras de una PYME sobre una contabilidad simulada"
+requires-python = ">=3.10"
+keywords = ["mcp", "model-context-protocol", "finanzas", "pyme", "sqlite"]
+dependencies = [
+    "mcp>=1.27.0,<2.0.0",
+]
+
+[project.scripts]
+finanzas-mcp = "finanzas_mcp.server:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+finanzas_mcp = ["*.sql"]
