@@ -6,8 +6,11 @@ puede usar sin una conexion MCP de por medio.
 """
 
 from .gastos_por_categoria import desglose_gastos, detectar_gastos_atipicos
+from .tendencia_ingresos import estado_resultados, tendencia_ingresos
 
 __all__ = [
     "desglose_gastos",
-    "detectar_gastos_atipicos"
+    "detectar_gastos_atipicos",
+    "tendencia_ingresos",
+    "estado_resultados",
 ]
