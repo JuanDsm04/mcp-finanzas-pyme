@@ -6,6 +6,7 @@ puede usar sin una conexion MCP de por medio.
 """
 
 from .gastos_por_categoria import desglose_gastos, detectar_gastos_atipicos
+from .proyeccion_flujo import proyeccion_flujo_caja, salud_financiera
 from .tendencia_ingresos import estado_resultados, tendencia_ingresos
 
 __all__ = [
@@ -13,4 +14,6 @@ __all__ = [
     "detectar_gastos_atipicos",
     "tendencia_ingresos",
     "estado_resultados",
+    "proyeccion_flujo_caja",
+    "salud_financiera",
 ]
