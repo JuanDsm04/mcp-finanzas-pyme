@@ -121,3 +121,135 @@ def z_scores(values: list[float]) -> list[float]:
     if stdev == 0:
         return [0.0] * len(values)
     return [(value - mean) / stdev for value in values]
+
+
+def seasonal_index(
+    series: dict[str, float], target_month: str, damping: float = SEASONAL_DAMPING
+) -> float:
+    """Cuanto se desvia un mes del calendario respecto al promedio general.
+
+    Un 1.18 significa "este mes suele facturar 18% arriba de un mes promedio". Si
+    el mes nunca se ha observado devuelve 1.0, para que quien llama se quede con
+    la tendencia sin corregir. La proporcion se amortigua porque el historial es
+    corto.
+    """
+    if not series:
+        return 1.0
+
+    overall_mean = statistics.fmean(series.values())
+    if overall_mean == 0:
+        return 1.0
+
+    target = month_number(target_month)
+    same_month = [value for key, value in series.items() if month_number(key) == target]
+    if not same_month:
+        return 1.0
+
+    raw_ratio = statistics.fmean(same_month) / overall_mean
+    return 1.0 + (raw_ratio - 1.0) * damping
+
+
+@dataclass(frozen=True)
+class Projection:
+    """Un mes proyectado: el valor final, la base antes de la correccion y el factor usado."""
+
+    month: str
+    value: float
+    base: float
+    seasonal_factor: float
+
+
+def project(
+    series: dict[str, float],
+    months_ahead: int = 1,
+    window: int = DEFAULT_WINDOW,
+) -> list[Projection]:
+    """Proyecta una serie mensual con tendencia mas estacionalidad amortiguada."""
+    if len(series) < 2:
+        raise ValueError("se necesitan al menos dos meses de historial para proyectar")
+
+    ordered = sorted(series.items())
+    recent = ordered[-window:] if len(ordered) >= window else ordered
+    values = [value for _month, value in recent]
+    trend = linear_trend(values)
+
+    last_month = ordered[-1][0]
+    projections: list[Projection] = []
+
+    for step in range(1, months_ahead + 1):
+        target_month = month_add(last_month, step)
+        # El indice x sigue avanzando mas alla del final de la ventana ajustada.
+        x = len(values) - 1 + step
+        base = trend.slope * x + trend.intercept
+        factor = seasonal_index(series, target_month)
+        projections.append(
+            Projection(
+                month=target_month,
+                value=max(0.0, base * factor),
+                base=base,
+                seasonal_factor=factor,
+            )
+        )
+
+    return projections
+
+
+def zero_fill(series: dict[str, float], months: list[str]) -> dict[str, float]:
+    """Completa la serie con ceros en los meses que faltan."""
+    return {month: series.get(month, 0.0) for month in months}
+
+
+def project_stable(
+    series: dict[str, float],
+    months_ahead: int = 1,
+    window: int = DEFAULT_WINDOW,
+    damping: float = 1.0,
+) -> list[Projection]:
+    """Proyecta un gasto recurrente como nivel por indice estacional."""
+    if not series:
+        raise ValueError("no se puede proyectar una serie vacia")
+
+    ordered = sorted(series.items())
+    recent = ordered[-window:] if len(ordered) >= window else ordered
+    level = statistics.fmean(value for _month, value in recent)
+
+    last_month = ordered[-1][0]
+    projections: list[Projection] = []
+    for step in range(1, months_ahead + 1):
+        target_month = month_add(last_month, step)
+        factor = seasonal_index(series, target_month, damping=damping)
+        projections.append(
+            Projection(
+                month=target_month,
+                value=max(0.0, level * factor),
+                base=level,
+                seasonal_factor=factor,
+            )
+        )
+    return projections
+
+
+def ratio_to_income(
+    expense_series: dict[str, float],
+    income_series: dict[str, float],
+    window: int = DEFAULT_WINDOW,
+) -> float:
+    """Proporcion mediana de los ingresos que se lleva una serie de gastos.
+
+    Los gastos variables se proyectan con esta proporcion y no con su propia
+    tendencia, porque suben y bajan justamente porque las ventas suben y bajan.
+    """
+    months = sorted(set(expense_series) & set(income_series))[-window:]
+    ratios = [
+        expense_series[month] / income_series[month]
+        for month in months
+        if income_series.get(month)
+    ]
+    return statistics.median(ratios) if ratios else 0.0
+
+
+def runway_months(cash: float, monthly_burn: float) -> float | None:
+    """Cuantos meses de gastos fijos cubre un saldo; None si no hay gasto."""
+    if monthly_burn <= 0:
+        return None
+    return cash / monthly_burn
