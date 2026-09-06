@@ -138,6 +138,48 @@ def salud_financiera() -> str:
     """
     return _salud_financiera()
 
+
+@mcp.resource("finanzas://esquema", mime_type="text/plain")
+def recurso_esquema() -> str:
+    """DDL completo de la base de datos simulada (5 tablas y una vista)."""
+    return db.SCHEMA_FILE.read_text(encoding="utf-8")
+
+
+@mcp.resource("finanzas://catalogo/categorias", mime_type="text/plain")
+def recurso_categorias() -> str:
+    """Catalogo de categorias de ingreso y gasto, con la marca de fijo/variable."""
+    rows = db.query(
+        "SELECT nombre, tipo, es_fijo, descripcion FROM categorias ORDER BY tipo, nombre"
+    )
+    lines = ["nombre|tipo|es_fijo|descripcion"]
+    lines += [
+        f"{row['nombre']}|{row['tipo']}|{row['es_fijo']}|{row['descripcion']}" for row in rows
+    ]
+    return "\n".join(lines)
+
+
+@mcp.resource("finanzas://meses", mime_type="text/plain")
+def recurso_meses() -> str:
+    """Meses con datos disponibles, uno por linea."""
+    return "\n".join(db.available_months())
+
+
+@mcp.prompt()
+def revision_mensual(mes: str = "") -> str:
+    """Plantilla para una revision financiera completa de un mes."""
+    objetivo = mes.strip() or "el ultimo mes con datos"
+    return (
+        f"Hazme una revision financiera de {objetivo} de mi negocio. "
+        "Usa las herramientas disponibles para: "
+        "1) obtener el estado de resultados del mes, "
+        "2) desglosar los gastos por categoria, "
+        "3) revisar si la tendencia de ingresos viene subiendo o bajando, y "
+        "4) detectar gastos atipicos. "
+        "Al final dame tres conclusiones concretas y una recomendacion accionable, "
+        "en lenguaje sencillo, sin jerga contable."
+    )
+
+
 def main() -> int:
     """Lee los argumentos, prepara la base de datos y sirve por stdio."""
     parser = argparse.ArgumentParser(
