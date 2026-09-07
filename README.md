@@ -26,17 +26,36 @@ returns a report that states its own assumptions:
 
 "Panadería La Espiga", a small bakery.  Covering **2025-01 to 2026-08** (20 months, 1,088 transactions).
 
+
 ## Installation
 
 Requires **Python 3.10+**. No database server and no API key: the SQLite file is
 built automatically on first run from the two bundled SQL scripts.
 
+> The dependency is pinned to `mcp>=1.27,<2`. The MCP Python SDK v2 renamed
+> `FastMCP` to `MCPServer` and changed several public field names; an unpinned
+> install picks up 2.x and fails at import.
+
+### Use it as a dependency
+
+If you only want to *use* this server, one command is enough — no clone, no
+database setup, no API key:
+
 ```bash
-git clone https://github.com/JuanDsm04/mcp-finanzas-pyme.git
+pip install git+https://github.com/<your-user>/mcp-finanzas-pyme.git
+```
+
+That installs the package and creates a `finanzas-mcp` executable in your
+environment, which is what you point your MCP host at.
+
+### Develop on it
+
+```bash
+git clone https://github.com/<your-user>/mcp-finanzas-pyme.git
 cd mcp-finanzas-pyme
 
 python -m venv .venv
-source .venv/bin/activate   # Windows: .venv\Scripts\activate
+source .venv/bin/activate          # Windows: .venv\Scripts\activate
 
 pip install -e .
 ```
@@ -47,17 +66,18 @@ Verify it starts:
 python -m finanzas_mcp.server --help
 ```
 
-> The dependency is pinned to `mcp>=1.27,<2`. The MCP Python SDK v2 renamed
-> `FastMCP` to `MCPServer` and changed several public field names; an unpinned
-> install picks up 2.x and fails at import.
-
-Running `python -m finanzas_mcp.server` by hand just blocks: it is waiting for
-JSON-RPC messages on stdin. That is expected — the host is what launches it.
-
 ## Connecting it to a host
 
-**Any MCP host** (generic stdio entry). Once the package is installed in the
-environment the host launches, no working directory or `PYTHONPATH` is needed:
+**Any MCP host** (generic stdio entry). After installing, either of these works —
+the console script, or the module, which is handy when you want to be explicit
+about which interpreter runs it:
+
+```json
+{
+  "command": "finanzas-mcp",
+  "args": []
+}
+```
 
 ```json
 {
@@ -66,21 +86,82 @@ environment the host launches, no working directory or `PYTHONPATH` is needed:
 }
 ```
 
-**Claude Desktop:** add to `claude_desktop_config.json`, using an absolute
-interpreter path since it does not inherit your shell's virtual environment:
+No working directory or `PYTHONPATH` is needed in either case.
+
+**If your host does not inherit the active virtual environment** — Claude Desktop
+does not, and some editors do not either — use absolute paths:
+
+```json
+{
+  "command": "C:\\path\\to\\your\\.venv\\Scripts\\finanzas-mcp.exe",
+  "args": []
+}
+```
+
+```json
+{
+  "command": "/absolute/path/to/.venv/bin/python",
+  "args": ["-m", "finanzas_mcp.server"]
+}
+```
+
+**chatbot-redes** — install into the same virtual environment as the chatbot,
+then flip the registry entry to enabled:
+
+```bash
+pip install -e ../mcp-finanzas-pyme
+```
+
+```json
+"finanzas-pyme": {
+  "enabled": true,
+  "transport": "stdio",
+  "description": "Servidor MCP propio: asistente financiero para PYMES",
+  "command": "python",
+  "args": ["-m", "finanzas_mcp.server"],
+  "env": {}
+}
+```
+
+Check the connection without spending API credits with
+`python scripts/check_servers.py` from the chatbot repo.
+
+**Claude Desktop** — add to `claude_desktop_config.json`:
 
 ```json
 {
   "mcpServers": {
     "finanzas-pyme": {
-      "command": "/absolute/path/to/.venv/bin/python",
-      "args": ["-m", "finanzas_mcp.server"]
+      "command": "/absolute/path/to/.venv/bin/finanzas-mcp",
+      "args": []
     }
   }
 }
 ```
 
-**MCP Inspector:** `npx @modelcontextprotocol/inspector python -m finanzas_mcp.server`
+**MCP Inspector** — the quickest way to check the server before wiring it into a
+host:
+
+```bash
+npx @modelcontextprotocol/inspector finanzas-mcp
+```
+
+### Where the database lives
+
+With an editable install the database goes to `data/finanzas.db` inside the
+repository. With a regular install the package lives in `site-packages`, so it
+lands inside the virtual environment instead. Both work; to choose the location
+explicitly, pass the flag in `args`:
+
+```json
+{
+  "command": "finanzas-mcp",
+  "args": ["--db-path", "C:\\Users\\you\\finanzas.db"]
+}
+```
+
+Running `finanzas-mcp` by hand just blocks: it is waiting for JSON-RPC messages
+on stdin. That is expected — the host is what launches it. Ctrl+C exits.
 
 ## Usage
 
