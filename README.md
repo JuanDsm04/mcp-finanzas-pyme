@@ -42,7 +42,7 @@ If you only want to *use* this server, one command is enough — no clone, no
 database setup, no API key:
 
 ```bash
-pip install git+https://github.com/<your-user>/mcp-finanzas-pyme.git
+pip install git+https://github.com/JuanDsm04/mcp-finanzas-pyme.git
 ```
 
 That installs the package and creates a `finanzas-mcp` executable in your
@@ -51,7 +51,7 @@ environment, which is what you point your MCP host at.
 ### Develop on it
 
 ```bash
-git clone https://github.com/<your-user>/mcp-finanzas-pyme.git
+git clone https://github.com/JuanDsm04/mcp-finanzas-pyme.git
 cd mcp-finanzas-pyme
 
 python -m venv .venv
